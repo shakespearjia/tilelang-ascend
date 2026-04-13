@@ -2238,6 +2238,14 @@ void CodeGenTileLangNPUIRDEV::VselectCodegen(const CallNode *op) {
   SetVarValue(npuirop.dst, result);
 }
 
+mlir::Value CodeGenTileLangNPUIRDEV::IfthenElseCodegen(const CallNode *op) {
+  auto condition = MakeValue(op->args[0]);
+  auto true_value = MakeValue(op->args[1]);
+  auto false_value = MakeValue(op->args[2]);
+  auto mlirVar = builder.create<mlir::arith::SelectOp>(
+      builder.getUnknownLoc(), condition, true_value, false_value);
+  return mlirVar;
+}
 /// Generate hivm.hir.vbrc for tl.npuir_brc.
 /// before:
 ///    T.npuir_brc(A, B)
@@ -3606,6 +3614,8 @@ mlir::Value CodeGenTileLangNPUIRDEV::VisitExpr_(const CallNode *op) {
     VselectCodegen(op);
   } else if (op->op.same_as(Op::Get("tl.npuir_cmp"))) {
     CreateHIVMBinaryVectorOp<mlir::hivm::VCmpOp>(op);
+  } else if (op->op.same_as(builtin::if_then_else())) {
+    return IfthenElseCodegen(op);
   } else if (op->op.same_as(Op::Get("tl.npuir_load_nd2nz"))) {
     Nd2NzCodegen(op);
   } else if (op->op.same_as(Op::Get("tl.npuir_store_nz2nd"))) {
@@ -3847,7 +3857,7 @@ mlir::Value CodeGenTileLangNPUIRDEV::VisitExpr_(const AddNode *op) {
   if (op->dtype.is_int() || op->dtype.is_uint()) {
     mlirVal = BinaryOpCodegen<mlir::arith::AddIOp, std::nullptr_t>(op, nullptr,
                                                                    lhs, rhs);
-  } else if (op->dtype.is_float()) {
+  } else if (op->dtype.is_float() || op->dtype.is_bfloat16() || op->dtype.is_float16()) {
     mlirVal = BinaryOpCodegen<mlir::arith::AddFOp, std::nullptr_t>(op, nullptr,
                                                                    lhs, rhs);
   }
@@ -3861,7 +3871,7 @@ mlir::Value CodeGenTileLangNPUIRDEV::VisitExpr_(const SubNode *op) {
   if (op->dtype.is_int() || op->dtype.is_uint()) {
     mlirVal = BinaryOpCodegen<mlir::arith::SubIOp, std::nullptr_t>(op, nullptr,
                                                                    lhs, rhs);
-  } else if (op->dtype.is_float()) {
+  } else if (op->dtype.is_float() || op->dtype.is_bfloat16() || op->dtype.is_float16()) {
     mlirVal = BinaryOpCodegen<mlir::arith::SubFOp, std::nullptr_t>(op, nullptr,
                                                                    lhs, rhs);
   }
@@ -3905,7 +3915,7 @@ mlir::Value CodeGenTileLangNPUIRDEV::VisitExpr_(const MulNode *op) {
   if (op->dtype.is_int() || op->dtype.is_uint()) {
     mlirVal = BinaryOpCodegen<mlir::arith::MulIOp, std::nullptr_t>(op, nullptr,
                                                                    lhs, rhs);
-  } else if (op->dtype.is_float()) {
+  } else if (op->dtype.is_float() || op->dtype.is_bfloat16() || op->dtype.is_float16()) {
     mlirVal = BinaryOpCodegen<mlir::arith::MulFOp, std::nullptr_t>(op, nullptr,
                                                                    lhs, rhs);
   }
